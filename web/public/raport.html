@@ -581,9 +581,10 @@
       </figcaption>
     </figure>
     <p class="lede">
-      The shared card deliberately stays on the trip's departure: it is a picture of the group's
-      plan, and a countdown that only makes sense on one person's phone would be wrong in
-      everybody else's chat.
+      The shared card follows the same rule: its header and countdown are the sender's own
+      departure, so the picture says what they were looking at when they tapped share. The trip's
+      departure keeps the supporting line there too, and the list below names everybody's times —
+      so a recipient leaving at another hour still finds themselves in it.
     </p>
   </section>
 
@@ -639,8 +640,8 @@
     </figure>
 
     <p class="lede">
-      Everything on the card follows the reader's language and clock — a Greek member's copy
-      says <em>18:00 · 23 Σεπτεμβρίου</em> for the same departure. The grouping itself
+      The header is the sender's own departure; everything else on the card follows the reader's
+      language and clock — a Greek member's copy says <em>18:00 · 23 Σεπτεμβρίου</em> for the same departure. The grouping itself
       stays keyed to Albanian time, so two people on one departure never split into separate rows
       just because somebody reads the card in Greek. Names come from the approved roster only:
       people who have signed in but are not approved yet are never named on a picture the group
@@ -700,7 +701,7 @@
     <h2>How it was checked</h2>
     <div class="stats">
       <div class="stat">
-        <span class="stat__value">226</span>
+        <span class="stat__value">230</span>
         <span class="stat__label">app tests</span>
       </div>
       <div class="stat">
@@ -712,7 +713,7 @@
         <span class="stat__label">backend tests</span>
       </div>
       <div class="stat">
-        <span class="stat__value">532</span>
+        <span class="stat__value">536</span>
         <span class="stat__label">total, all passing</span>
       </div>
     </div>
@@ -779,8 +780,9 @@ the trip's own departure.
 The group's plan moves to a supporting line under the countdown, labelled
 "Data e propozuar" while the date is being voted on and "Data zyrtare" once it
 is confirmed. Somebody not coming keeps seeing the trip's departure, and nobody
-else's vote can move your screen. The shared card stays on the trip's
-departure, because it is a picture of the group's plan.
+else's vote can move your screen. The shared card follows the same rule: its header and
+countdown are the sender's own departure, with the trip's on the supporting
+line and everybody's times in the list below.
 
   E mërkurë, 23 Shtator 2026, 06:00        <- your departure
   10 ditë · 08 orë                           <- counting to the same 06:00
@@ -823,7 +825,7 @@ ALSO THIS SESSION
   recorded in storage.cors.json.
 
 CHECKED
-226 app tests, 184 security-rule tests, 122 backend tests — 532 passing.
+230 app tests, 184 security-rule tests, 122 backend tests — 536 passing.
 Sharing was verified in a real browser, signed in, in Greek and Albanian,
 including scrolled to the bottom of a long list. That is how two defects
 surfaced that no test would have caught: a capture that photographed the top of

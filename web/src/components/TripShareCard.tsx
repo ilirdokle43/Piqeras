@@ -15,6 +15,12 @@ import { Countdown } from './Countdown';
  * this is composed for sharing: the same header and countdown, and in place of
  * the tally, everyone who is coming grouped by the departure they chose.
  *
+ * The header is the sender's own departure, matching the screen they tapped
+ * share on — the picture should say what they were looking at. The trip's own
+ * departure keeps the supporting line beneath, and the list below names
+ * everybody's times, so a recipient leaving at another hour still finds
+ * themselves in it.
+ *
  * It carries its own backdrop because the app's is a `position: fixed` layer
  * outside this subtree — an off-screen node would otherwise be drawn onto
  * nothing.
@@ -22,12 +28,16 @@ import { Countdown } from './Countdown';
 export function TripShareCard({
   trip,
   departure,
+  tripDeparture,
   now,
   responses,
   members,
 }: {
   trip: Trip;
+  /** What the header is about: the sender's own departure once they have voted. */
   departure: Date;
+  /** The trip's own, for the supporting line when the two differ. */
+  tripDeparture: Date;
   now: Date;
   responses: readonly TripResponse[];
   /** The approved roster, so the people who never answered can be named. */
@@ -131,6 +141,15 @@ export function TripShareCard({
         </div>
 
         <Countdown target={dates.countdownTarget(departure)} now={now} />
+
+        {/* Only when the sender leaves at a different hour from the trip's
+            own departure — otherwise it prints the same date twice. */}
+        {departure.getTime() !== tripDeparture.getTime() && (
+          <p className="muted">
+            {confirmed ? t('dateConfirmed') : t('proposedDate')}:{' '}
+            {dates.full(tripDeparture)}
+          </p>
+        )}
 
         <section className="share-card__who">
           <div className="panel__header">

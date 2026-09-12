@@ -102,11 +102,12 @@ export function HomeScreen({ navigate }: { navigate: (route: Route) => void }) {
                 of buttons nobody can tap. */}
             <ShareButton
               renderCard={
-                trip && departure
+                trip && departure && showing
                   ? () => (
                       <TripShareCard
                         trip={trip}
-                        departure={departure}
+                        departure={showing}
+                        tripDeparture={departure}
                         now={now}
                         responses={responses}
                         members={approvedMembers}

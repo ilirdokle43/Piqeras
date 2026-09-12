@@ -52,13 +52,16 @@ function renderCard(
   locale: Locale,
   responses: typeof RESPONSES = RESPONSES,
   members: ApprovedMember[] = ROSTER,
+  /** The sender's own departure, when it differs from the trip's. */
+  mine: Date = DEPARTURE,
 ) {
   localStorage.setItem('piqeras.locale', locale);
   return render(
     <I18nProvider>
       <TripShareCard
         trip={makeTrip()}
-        departure={DEPARTURE}
+        departure={mine}
+        tripDeparture={DEPARTURE}
         now={NOW}
         responses={responses}
         members={members}
@@ -209,6 +212,36 @@ describe('the card as a picture', () => {
     expect(first.querySelector('.share-slot__day')!.textContent).toBe('24 Σεπτεμβρίου');
     // 06:00 in Tirana is 07:00 in Athens.
     expect(first.querySelector('.share-slot__time')!.textContent).toBe('07:00');
+  });
+
+  test('the header is the sender\u2019s own departure, like the screen they shared', () => {
+    // The picture should say what they were looking at when they tapped share.
+    const mine = new Date(DEPARTURE.getTime() + 2 * 3600_000);
+    const { container } = renderCard('sq', RESPONSES, ROSTER, mine);
+    expect(container.querySelector('.share-card__date')!.textContent).toBe('24 Shtator');
+    expect(container.textContent).toContain('E enjte, 24 Shtator 2026, 08:00');
+  });
+
+  test('and the trip\u2019s own departure keeps the supporting line', () => {
+    // A recipient leaving at another hour still needs the group's plan.
+    const mine = new Date(DEPARTURE.getTime() + 2 * 3600_000);
+    const { container } = renderCard('sq', RESPONSES, ROSTER, mine);
+    expect(container.textContent).toContain('Data e propozuar: E enjte, 24 Shtator 2026, 06:00');
+  });
+
+  test('a sender on the trip\u2019s own time gets no second date', () => {
+    const { container } = renderCard('sq');
+    expect(container.textContent).not.toContain('Data e propozuar:');
+  });
+
+  test('everybody\u2019s times still appear in the list, whoever sent it', () => {
+    // The header is personal; the plan below it is the whole group's.
+    const mine = new Date(DEPARTURE.getTime() + 2 * 3600_000);
+    const { container } = renderCard('sq', RESPONSES, ROSTER, mine);
+    const times = travel(container).map(
+      (el) => el.querySelector('.share-slot__time')!.textContent,
+    );
+    expect(times).toEqual(['06:00', '08:30']);
   });
 
   test('the grouping does not change with the reader, only the labels', () => {
