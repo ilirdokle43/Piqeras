@@ -546,20 +546,40 @@
   </div>
 
   <section>
-    <h2>The countdown is yours</h2>
+    <h2>The screen is about your trip</h2>
     <p class="lede">
       The group does not leave together — this trip already has three departures across three
-      days — so the countdown is the time until <em>you</em> go. Pick a departure and the numbers
-      start counting to it; until you have picked one they count to the trip's own departure, as
-      before.
+      days — so once you pick a time, the whole header is about when <em>you</em> go: the date at
+      the top, the full line under it and the countdown all agree. Until you have picked one, they
+      are the trip's own departure, as before.
     </p>
     <p class="lede">
-      When your time differs from the trip's, a line under the countdown says which one it is
-      counting to, so the big number never quietly disagrees with the date printed above it.
-      Somebody who answered "not coming" has no departure of their own and keeps seeing the
-      trip's — which is also what they need if they change their mind. Nobody else's vote can
-      move your countdown.
+      The group's plan does not disappear: it moves to a supporting line under the countdown,
+      labelled <em>Data e propozuar</em> while the date is still being voted on and
+      <em>Data zyrtare</em> once an organizer confirms it. Somebody who answered "not coming" has
+      no departure of their own and keeps seeing the trip's — which is also what they need if
+      they change their mind. Nobody else's vote can move your screen.
     </p>
+
+    <figure class="card-figure">
+      <div class="card-figure__rows">
+        <div class="card-figure__row">
+          <span class="card-figure__label">Header</span>
+          <span>E mërkurë, 23 Shtator 2026, <b>06:00</b> — your departure</span>
+        </div>
+        <div class="card-figure__row">
+          <span class="card-figure__label">Countdown</span>
+          <span>10 ditë · 08 orë — counting to the same 06:00</span>
+        </div>
+        <div class="card-figure__row card-figure__row--aside">
+          <span class="card-figure__label">Under it</span>
+          <span>Data e propozuar: E mërkurë, 23 Shtator 2026, 17:00</span>
+        </div>
+      </div>
+      <figcaption>
+        The live screen for somebody who voted to leave at 06:00 on a trip proposed for 17:00.
+      </figcaption>
+    </figure>
     <p class="lede">
       The shared card deliberately stays on the trip's departure: it is a picture of the group's
       plan, and a countdown that only makes sense on one person's phone would be wrong in
@@ -680,7 +700,7 @@
     <h2>How it was checked</h2>
     <div class="stats">
       <div class="stat">
-        <span class="stat__value">224</span>
+        <span class="stat__value">226</span>
         <span class="stat__label">app tests</span>
       </div>
       <div class="stat">
@@ -692,7 +712,7 @@
         <span class="stat__label">backend tests</span>
       </div>
       <div class="stat">
-        <span class="stat__value">530</span>
+        <span class="stat__value">532</span>
         <span class="stat__label">total, all passing</span>
       </div>
     </div>
@@ -750,14 +770,21 @@ left", an hour before the group actually leaves. Written as "the same clock
 reading, in their zone" so it cannot drift when daylight-saving rules change.
 Recorded in the code and in docs/TIMEZONE.md as a decision, not a bug.
 
-THE COUNTDOWN IS YOURS
+THE SCREEN IS ABOUT YOUR TRIP
 The group does not leave together — this trip has three departures across three
-days — so the countdown is the time until YOU go. Pick a departure and it
-counts to that; until then it counts to the trip's own departure. When the two
-differ, a line under the countdown says which one it is counting to. Somebody
-not coming keeps seeing the trip's departure, and nobody else's vote can move
-your countdown. The shared card stays on the trip's departure, because it is a
-picture of the group's plan.
+days — so once you pick a time the whole header is about when YOU go: the date
+at the top, the line under it and the countdown all agree. Until then they are
+the trip's own departure.
+
+The group's plan moves to a supporting line under the countdown, labelled
+"Data e propozuar" while the date is being voted on and "Data zyrtare" once it
+is confirmed. Somebody not coming keeps seeing the trip's departure, and nobody
+else's vote can move your screen. The shared card stays on the trip's
+departure, because it is a picture of the group's plan.
+
+  E mërkurë, 23 Shtator 2026, 06:00        <- your departure
+  10 ditë · 08 orë                           <- counting to the same 06:00
+  Data e propozuar: ... 17:00              <- the group's plan
 
 ONE TAP SENDS THE WHOLE PLAN
 Share icon on the countdown screen and in every top bar. Opens the phone's
@@ -796,7 +823,7 @@ ALSO THIS SESSION
   recorded in storage.cors.json.
 
 CHECKED
-224 app tests, 184 security-rule tests, 122 backend tests — 530 passing.
+226 app tests, 184 security-rule tests, 122 backend tests — 532 passing.
 Sharing was verified in a real browser, signed in, in Greek and Albanian,
 including scrolled to the bottom of a long list. That is how two defects
 surfaced that no test would have caught: a capture that photographed the top of

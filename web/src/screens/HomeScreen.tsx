@@ -50,11 +50,12 @@ export function HomeScreen({ navigate }: { navigate: (route: Route) => void }) {
   const departure = trip ? effectiveDeparture(trip) : null;
 
   /**
-   * What the countdown on THIS phone counts down to.
+   * The departure THIS phone is about.
    *
    * Not everybody leaves together — the group routinely spreads across three
-   * departures — so once you have picked a time, the countdown is the time until
-   * *you* go. Until then it is the trip's own departure.
+   * departures — so once you have picked a time, the date at the top and the
+   * countdown under it are both about when *you* go. Until then they are the
+   * trip's own departure.
    *
    * Somebody who answered "not coming" has no departure of their own, so they
    * see the trip's, which is also what they need if they change their mind.
@@ -63,8 +64,9 @@ export function HomeScreen({ navigate }: { navigate: (route: Route) => void }) {
     myResponse && countsAsAttendee(myResponse.attendance)
       ? myResponse.preferredDeparture
       : null;
-  const countdownTo = myDeparture ?? departure;
-  const countingToMine =
+  const showing = myDeparture ?? departure;
+  /** True once your own departure has moved the header away from the trip's. */
+  const showingMine =
     myDeparture != null && departure != null &&
     myDeparture.getTime() !== departure.getTime();
   const confirmed = trip ? isDateConfirmed(trip) : false;
@@ -153,22 +155,22 @@ export function HomeScreen({ navigate }: { navigate: (route: Route) => void }) {
             </div>
           )}
 
-          {trip && departure && (
+          {trip && departure && showing && (
             <>
               <section className="stack stack--tight fade-in">
                 <p className="eyebrow">{trip.destination || t('appName')}</p>
                 <h1 className="hero-title">{trip.title}</h1>
-                <p className="hero-date">{dates.dayMonth(departure)}</p>
+                <p className="hero-date">{dates.dayMonth(showing)}</p>
               </section>
 
               <div
                 className="stack stack--tight"
                 style={{ marginTop: 'var(--sp-4)', marginBottom: 'var(--sp-5)' }}
               >
-                <p className="body body--tight">{dates.full(departure)}</p>
+                <p className="body body--tight">{dates.full(showing)}</p>
                 {/* Only when this reader's clock actually disagrees with the
                     trip's own — otherwise it is a line of noise. */}
-                {dates.differsFromTripZone(departure) && (
+                {dates.differsFromTripZone(showing) && (
                   <p className="muted">{t('timeZoneNotice')}</p>
                 )}
                 <div className="summary">
@@ -184,13 +186,15 @@ export function HomeScreen({ navigate }: { navigate: (route: Route) => void }) {
                 </div>
               </div>
 
-              <Countdown target={dates.countdownTarget(countdownTo!)} now={now} />
+              <Countdown target={dates.countdownTarget(showing)} now={now} />
 
-              {/* Only when the two differ: otherwise it restates the line
-                  already sitting above the countdown. */}
-              {countingToMine && (
+              {/* Your own time now heads the screen, so the trip's takes the
+                  supporting line — the group's plan should not vanish just
+                  because you are leaving at a different hour. */}
+              {showingMine && (
                 <p className="muted" style={{ marginTop: 'var(--sp-2)' }}>
-                  {t('countdownYourDeparture', { date: dates.full(myDeparture!) })}
+                  {confirmed ? t('dateConfirmed') : t('proposedDate')}:{' '}
+                  {dates.full(departure)}
                 </p>
               )}
 

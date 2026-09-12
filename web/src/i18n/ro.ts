@@ -256,7 +256,6 @@ export const ro: Bundle = {
   timeZoneNotice: 'Orele sunt afișate în ora României.',
   shareScreenAction: 'Distribuie acest ecran',
   shareWhoIsTravelling: 'Cine pleacă și când',
-  countdownYourDeparture: 'Până la plecarea ta: {date}',
   screenshotSaved: 'Imaginea a fost salvată',
   shareFailed: 'Imaginea nu a putut fi creată. Încearcă din nou.',
 };

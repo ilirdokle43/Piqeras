@@ -173,10 +173,12 @@ describe('<HomeScreen>', () => {
   const cells = (c: HTMLElement) =>
     [...c.querySelectorAll('.countdown__value')].map((el) => el.textContent);
 
-  test('counts to the trip departure while you have not voted', () => {
+  test('shows the trip departure while you have not voted', () => {
     const { container } = renderWithI18n(<HomeScreen navigate={vi.fn()} />);
     expect(cells(container).slice(0, 2)).toEqual(['29', '18']);
-    expect(container.textContent).not.toContain('Deri te nisja jote');
+    expect(screen.getByText('E enjte, 24 Shtator 2026, 06:00')).toBeInTheDocument();
+    // Nothing to compare against, so no supporting line.
+    expect(container.textContent).not.toContain('Data e propozuar:');
   });
 
   test('counts to your own departure once you have picked one', () => {
@@ -188,15 +190,33 @@ describe('<HomeScreen>', () => {
     expect(cells(container).slice(0, 2)).toEqual(['29', '20']);
   });
 
-  test('and says so, rather than silently disagreeing with the date above it', () => {
+  test('the date at the top becomes your departure, not the trip\u2019s', () => {
+    // The whole header is about your trip once you have picked a time: the big
+    // date, the full line under it, and the countdown all agree.
     const mine = new Date(DEPARTURE.getTime() + 2 * 3600_000);
     state.responses = loadable([makeResponse(ME, 'Ilir', 'yes', mine)]);
 
     const { container } = renderWithI18n(<HomeScreen navigate={vi.fn()} />);
-    expect(container.textContent).toContain('Deri te nisja jote');
-    expect(container.textContent).toContain('E enjte, 24 Shtator 2026, 08:00');
-    // The trip's own departure still heads the screen.
-    expect(screen.getByText('E enjte, 24 Shtator 2026, 06:00')).toBeInTheDocument();
+    expect(screen.getByText('E enjte, 24 Shtator 2026, 08:00')).toBeInTheDocument();
+    expect(container.querySelector('.hero-date')!.textContent).toBe('24 Shtator');
+  });
+
+  test('the trip\u2019s own departure moves to the supporting line', () => {
+    // The group's plan must not vanish just because you leave at another hour.
+    const mine = new Date(DEPARTURE.getTime() + 2 * 3600_000);
+    state.responses = loadable([makeResponse(ME, 'Ilir', 'yes', mine)]);
+
+    const { container } = renderWithI18n(<HomeScreen navigate={vi.fn()} />);
+    expect(container.textContent).toContain('Data e propozuar: E enjte, 24 Shtator 2026, 06:00');
+  });
+
+  test('a confirmed trip labels that supporting line as the official date', () => {
+    const mine = new Date(DEPARTURE.getTime() + 2 * 3600_000);
+    state.trip = loadable(makeTrip({ status: 'confirmed', finalDeparture: DEPARTURE }));
+    state.responses = loadable([makeResponse(ME, 'Ilir', 'yes', mine)]);
+
+    const { container } = renderWithI18n(<HomeScreen navigate={vi.fn()} />);
+    expect(container.textContent).toContain('Data zyrtare: E enjte, 24 Shtator 2026, 06:00');
   });
 
   test('a "maybe" counts to their own time too — they are still travelling', () => {
@@ -206,21 +226,23 @@ describe('<HomeScreen>', () => {
     expect(cells(container).slice(0, 2)).toEqual(['29', '20']);
   });
 
-  test('somebody not coming sees the trip departure, not a countdown of their own', () => {
+  test('somebody not coming sees the trip departure throughout', () => {
     state.responses = loadable([makeResponse(ME, 'Ilir', 'no')]);
     const { container } = renderWithI18n(<HomeScreen navigate={vi.fn()} />);
     expect(cells(container).slice(0, 2)).toEqual(['29', '18']);
-    expect(container.textContent).not.toContain('Deri te nisja jote');
+    expect(screen.getByText('E enjte, 24 Shtator 2026, 06:00')).toBeInTheDocument();
+    expect(container.textContent).not.toContain('Data e propozuar:');
   });
 
   test('picking exactly the trip departure adds no second line about it', () => {
+    // Identical times would print the same date twice, one under the other.
     state.responses = loadable([makeResponse(ME, 'Ilir', 'yes', DEPARTURE)]);
     const { container } = renderWithI18n(<HomeScreen navigate={vi.fn()} />);
     expect(cells(container).slice(0, 2)).toEqual(['29', '18']);
-    expect(container.textContent).not.toContain('Deri te nisja jote');
+    expect(container.textContent).not.toContain('Data e propozuar:');
   });
 
-  test('somebody else\u2019s vote never moves your countdown', () => {
+  test('somebody else\u2019s vote never moves your header', () => {
     state.responses = loadable([
       makeResponse('other', 'Besi', 'yes', new Date(DEPARTURE.getTime() + 5 * 3600_000)),
     ]);

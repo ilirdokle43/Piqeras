@@ -258,7 +258,6 @@ export const it: Bundle = {
   timeZoneNotice: 'Gli orari sono mostrati in ora italiana.',
   shareScreenAction: 'Condividi questa schermata',
   shareWhoIsTravelling: 'Chi parte e quando',
-  countdownYourDeparture: 'Fino alla tua partenza: {date}',
   screenshotSaved: 'Immagine salvata',
   shareFailed: 'Non è stato possibile creare l’immagine. Riprova.',
 };

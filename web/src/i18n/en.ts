@@ -254,7 +254,6 @@ export const en: Bundle = {
   timeZoneNotice: 'Times are shown in Albanian time.',
   shareScreenAction: 'Share this screen',
   shareWhoIsTravelling: 'Who is travelling, and when',
-  countdownYourDeparture: 'Counting to your own departure: {date}',
   screenshotSaved: 'Screenshot saved',
   shareFailed: 'Could not create the picture. Please try again.',
 };

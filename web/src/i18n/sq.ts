@@ -273,7 +273,6 @@ export const sq = {
   timeZoneNotice: 'Orët tregohen sipas orës së Shqipërisë.',
   shareScreenAction: 'Ndaje këtë ekran',
   shareWhoIsTravelling: 'Kush niset dhe kur',
-  countdownYourDeparture: 'Deri te nisja jote: {date}',
   screenshotSaved: 'Fotografia u ruajt',
   shareFailed: 'Fotografia nuk u krijua. Provo përsëri.',
 } as const;

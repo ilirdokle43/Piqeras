@@ -259,7 +259,6 @@ export const el: Bundle = {
   timeZoneNotice: 'Οι ώρες εμφανίζονται σε ώρα Ελλάδας.',
   shareScreenAction: 'Μοιράσου αυτή την οθόνη',
   shareWhoIsTravelling: 'Ποιοι φεύγουν και πότε',
-  countdownYourDeparture: 'Μέχρι τη δική σου αναχώρηση: {date}',
   screenshotSaved: 'Η εικόνα αποθηκεύτηκε',
   shareFailed: 'Η εικόνα δεν δημιουργήθηκε. Δοκίμασε ξανά.',
 };
