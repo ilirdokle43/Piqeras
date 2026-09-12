@@ -1,0 +1,1351 @@
+/* =========================================================================
+   Piqeras design system
+   -------------------------------------------------------------------------
+   A single dark, sunset-lit theme. The app is always shown over a photograph,
+   so the palette is built for legibility on top of an image: light text, deep
+   scrims, and translucent panels rather than solid cards.
+   ========================================================================= */
+
+:root {
+  /* Ink — the dark end, sampled from the pebble beach in the reference photo */
+  --ink-900: #0b0d10;
+  --ink-800: #12151a;
+  --ink-700: #1a1f26;
+  --ink-600: #252b34;
+  --ink-500: #333b47;
+
+  /* Sunset — the reason the app looks like Piqeras and not like a dashboard */
+  --sun-700: #c53d1f;
+  --sun-600: #e8502f;
+  --sun-500: #ff6b35;
+  --sun-400: #ff8c42;
+  --sun-300: #ffb067;
+  --sun-200: #ffd3a3;
+
+  --sea-600: #23414f;
+  --sea-500: #2e5266;
+  --sea-400: #3e7189;
+
+  /* Attendance semantics */
+  --yes: #5bd68a;
+  --maybe: #fbbf24;
+  --no: #f0776f;
+
+  --text: #ffffff;
+  --text-soft: rgba(255, 255, 255, 0.74);
+  --text-faint: rgba(255, 255, 255, 0.52);
+  --text-ghost: rgba(255, 255, 255, 0.34);
+
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.22);
+
+  /* Translucent panel — used everywhere content sits over the photo */
+  --glass: rgba(14, 17, 22, 0.52);
+  --glass-strong: rgba(11, 13, 16, 0.82);
+  --glass-blur: saturate(150%) blur(22px);
+
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.28);
+  --shadow-lift: 0 16px 48px rgba(0, 0, 0, 0.42);
+
+  /* Fluid spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  --font: 'Outfit', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+
+  /* Content column: comfortable on a phone, never sprawling on a desktop */
+  --measure: 34rem;
+
+  --tap: 48px; /* minimum touch target */
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ------------------------------------------------------------------ reset */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--ink-900);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* The photo is fixed; only the content column scrolls. */
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--sun-300);
+}
+
+:focus-visible {
+  outline: 2px solid var(--sun-300);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* Respect the user's motion preference — the countdown still ticks, it just
+   stops animating. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ------------------------------------------------------------- background */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: var(--ink-900);
+  background-size: cover;
+  background-position: center 40%;
+  transform: scale(1.04); /* hides edge softness while the image fades in */
+}
+
+.backdrop--loading {
+  opacity: 0;
+}
+
+.backdrop,
+.backdrop::after {
+  transition: opacity 700ms var(--ease);
+}
+
+/* The scrim. Dark at the top so status-bar icons stay readable, dark at the
+   bottom so the action buttons do, and thin in the middle so the sunset is
+   actually visible. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(4, 6, 9, 0.72) 0%,
+      rgba(4, 6, 9, 0.28) 26%,
+      rgba(4, 6, 9, 0.34) 55%,
+      rgba(4, 6, 9, 0.86) 100%
+    ),
+    radial-gradient(
+      120% 70% at 50% 78%,
+      rgba(0, 0, 0, 0) 40%,
+      rgba(0, 0, 0, 0.45) 100%
+    );
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.screen {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + var(--sp-5))
+    calc(env(safe-area-inset-right, 0px) + var(--sp-4))
+    calc(env(safe-area-inset-bottom, 0px) + var(--sp-5))
+    calc(env(safe-area-inset-left, 0px) + var(--sp-4));
+}
+
+.column {
+  width: 100%;
+  max-width: var(--measure);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.stack--tight {
+  gap: var(--sp-2);
+}
+
+.spacer {
+  flex: 1;
+  min-height: var(--sp-4);
+}
+
+/* ----------------------------------------------------------------- panel */
+
+.panel {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Older browsers without backdrop-filter would render nearly transparent
+   panels over a busy photo, so they get an opaque fallback instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .panel {
+    background: rgba(11, 13, 16, 0.9);
+  }
+}
+
+/* While a screenshot is being drawn.
+   `backdrop-filter` is invisible to every DOM rasteriser, so a glass panel
+   would come out as a barely-tinted box with the photo showing through the
+   text. This is the same opaque fallback the @supports rule above gives to
+   browsers that cannot blur — near-identical to look at, and it renders. */
+:root.capturing .panel,
+:root.capturing .history-card,
+:root.capturing .modal {
+  background: rgba(11, 13, 16, 0.9);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.panel--flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.panel__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+/* ------------------------------------------------------------ typography */
+
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sun-300);
+}
+
+.hero-title {
+  /* Fluid, but never so large it wraps mid-word on a 320px screen. */
+  font-size: clamp(2.75rem, 13vw, 4.75rem);
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+}
+
+.hero-date {
+  font-size: clamp(1.5rem, 7vw, 2.25rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--sun-300);
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+}
+
+.section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.body {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--text-soft);
+}
+
+.body--tight {
+  line-height: 1.4;
+}
+
+.muted {
+  color: var(--text-faint);
+  font-size: 0.8125rem;
+}
+
+/* --------------------------------------------------------------- chips */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.chip--live {
+  background: rgba(255, 107, 53, 0.16);
+  border-color: rgba(255, 140, 66, 0.4);
+  color: var(--sun-200);
+}
+
+.chip--locked {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-faint);
+}
+
+.chip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.chip--yes .chip__dot { background: var(--yes); }
+.chip--maybe .chip__dot { background: var(--maybe); }
+.chip--no .chip__dot { background: var(--no); }
+.chip--none .chip__dot { background: var(--text-ghost); }
+
+.chip__count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: var(--tap);
+  padding: 0 var(--sp-5);
+  border-radius: var(--radius-pill);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: transform 140ms var(--ease), filter 140ms var(--ease),
+    background-color 140ms var(--ease);
+  text-align: center;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.975);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, var(--sun-500), var(--sun-600));
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(232, 80, 47, 0.32);
+}
+
+.btn--primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.btn--ghost {
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.btn--quiet {
+  min-height: 40px;
+  padding: 0 var(--sp-4);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-soft);
+}
+
+.btn--quiet:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.btn--danger {
+  background: rgba(240, 119, 111, 0.16);
+  border: 1px solid rgba(240, 119, 111, 0.4);
+  color: var(--no);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn-row {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.btn-row > * {
+  flex: 1;
+}
+
+@media (max-width: 359px) {
+  .btn-row {
+    flex-direction: column;
+  }
+}
+
+/* Language picker. `auto-fit` keeps two per row on a narrow phone and lets a
+   wider screen fit them all on one, without a breakpoint per language added. */
+.lang-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--sp-2);
+}
+
+.lang-grid .btn {
+  min-height: 42px;
+  padding: 0 var(--sp-3);
+  font-size: 0.9375rem;
+}
+
+/* ------------------------------------------------------------ countdown */
+
+.countdown {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-1);
+  width: 100%;
+}
+
+.countdown__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--sp-2) 2px;
+  position: relative;
+  min-width: 0;
+}
+
+/* Hairline separators instead of boxes: lighter, and they keep the four
+   units reading as one clock rather than four cards. */
+.countdown__cell + .countdown__cell::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(255, 255, 255, 0.22),
+    transparent
+  );
+}
+
+.countdown__value {
+  /* tabular-nums is what stops the layout twitching every single second */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  font-size: clamp(2.1rem, 11.5vw, 3.6rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.5);
+}
+
+.countdown__label {
+  font-size: clamp(0.5625rem, 2.6vw, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.countdown--past {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  text-align: center;
+  padding: var(--sp-4) 0;
+}
+
+.countdown--past .countdown__headline {
+  font-size: clamp(1.75rem, 8vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, var(--sun-200), var(--sun-400));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --------------------------------------------------------- summary bar */
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+/* ------------------------------------------------------------ responses */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.group__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+}
+
+.group__time {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.group__day {
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+}
+
+.person--me {
+  border-color: rgba(255, 140, 66, 0.35);
+  background: rgba(255, 107, 53, 0.1);
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  flex: none;
+  background: linear-gradient(135deg, var(--sea-500), var(--sea-600));
+  color: var(--text);
+}
+
+.person__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.person__name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person__note {
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}
+
+.person__meta {
+  text-align: right;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.person__time {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+/* ---------------------------------------------------------------- forms */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.field__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 var(--sp-4);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  color: var(--text);
+  /* 16px minimum stops iOS Safari zooming the page on focus */
+  font-size: 1rem;
+  transition: border-color 140ms var(--ease), background-color 140ms var(--ease);
+}
+
+.input:focus {
+  border-color: var(--sun-400);
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-ghost);
+}
+
+textarea.input {
+  padding: var(--sp-3) var(--sp-4);
+  min-height: 84px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.input--invalid {
+  border-color: var(--no);
+}
+
+.field__error {
+  font-size: 0.8125rem;
+  color: var(--no);
+}
+
+.field__hint {
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+
+.field__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+
+@media (max-width: 359px) {
+  .field__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Date and time inputs render their own dark UI given this hint. */
+.input[type='date'],
+.input[type='time'],
+.input[type='datetime-local'] {
+  color-scheme: dark;
+}
+
+/* --------------------------------------------------------- choice cards */
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 60px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid var(--line);
+  text-align: left;
+  transition: border-color 140ms var(--ease), background-color 140ms var(--ease);
+}
+
+.choice__mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  flex: none;
+  display: grid;
+  place-items: center;
+  transition: border-color 140ms var(--ease);
+}
+
+.choice__mark::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: scale(0);
+  transition: transform 160ms var(--ease);
+}
+
+.choice__text {
+  font-weight: 500;
+}
+
+.choice__sub {
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+
+.choice[aria-checked='true'] {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.choice[aria-checked='true'] .choice__mark::after {
+  transform: scale(1);
+}
+
+.choice--yes[aria-checked='true'] { border-color: var(--yes); }
+.choice--yes[aria-checked='true'] .choice__mark { border-color: var(--yes); }
+.choice--yes[aria-checked='true'] .choice__mark::after { background: var(--yes); }
+
+.choice--maybe[aria-checked='true'] { border-color: var(--maybe); }
+.choice--maybe[aria-checked='true'] .choice__mark { border-color: var(--maybe); }
+.choice--maybe[aria-checked='true'] .choice__mark::after { background: var(--maybe); }
+
+.choice--no[aria-checked='true'] { border-color: var(--no); }
+.choice--no[aria-checked='true'] .choice__mark { border-color: var(--no); }
+.choice--no[aria-checked='true'] .choice__mark::after { background: var(--no); }
+
+/* ------------------------------------------------------------- app bar */
+
+.appbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--tap);
+  margin-bottom: var(--sp-4);
+}
+
+.appbar__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-btn {
+  width: var(--tap);
+  height: var(--tap);
+  margin-inline-start: calc(var(--sp-3) * -1);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--text-soft);
+  transition: background-color 140ms var(--ease), color 140ms var(--ease);
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------- banners/states */
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.banner--info {
+  background: rgba(62, 113, 137, 0.24);
+  border: 1px solid rgba(62, 113, 137, 0.5);
+  color: #d8ecf5;
+}
+
+.banner--warn {
+  background: rgba(251, 191, 36, 0.16);
+  border: 1px solid rgba(251, 191, 36, 0.42);
+  color: #ffe9b3;
+}
+
+.banner--error {
+  background: rgba(240, 119, 111, 0.16);
+  border: 1px solid rgba(240, 119, 111, 0.42);
+  color: #ffd9d6;
+}
+
+.banner--offline {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.empty {
+  text-align: center;
+  padding: var(--sp-6) var(--sp-4);
+  color: var(--text-faint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.empty__icon {
+  font-size: 2rem;
+  opacity: 0.55;
+}
+
+/* ------------------------------------------------------------ skeletons */
+
+.skeleton {
+  border-radius: var(--radius);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.11) 37%,
+    rgba(255, 255, 255, 0.05) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--sun-400);
+  animation: spin 720ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------------------------------------------------------------- modal */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: end center;
+  background: rgba(4, 6, 9, 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: fade-in 180ms var(--ease);
+}
+
+@media (min-width: 600px) {
+  .modal-backdrop {
+    place-items: center;
+  }
+}
+
+.modal {
+  width: 100%;
+  max-width: 30rem;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--sp-5) var(--sp-4)
+    calc(env(safe-area-inset-bottom, 0px) + var(--sp-5));
+  box-shadow: var(--shadow-lift);
+  animation: slide-up 220ms var(--ease);
+}
+
+@media (min-width: 600px) {
+  .modal {
+    border-radius: var(--radius-lg);
+    animation: fade-in 180ms var(--ease);
+  }
+}
+
+.modal__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: var(--sp-2);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.fade-in {
+  animation: fade-in 320ms var(--ease);
+}
+
+/* ---------------------------------------------------------------- toast */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--sp-5));
+  z-index: 80;
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--radius-pill);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lift);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  max-width: calc(100vw - 2 * var(--sp-4));
+  text-align: center;
+  animation: slide-up 200ms var(--ease);
+}
+
+/* --------------------------------------------------------- tally / bars */
+
+.tally {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.tally__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.tally__time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  min-width: 8.5ch;
+}
+
+.tally__bar {
+  /* Both of these are spans, so they need blockifying explicitly — an inline
+     box ignores height, which silently renders an empty track. */
+  display: block;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+
+.tally__fill {
+  display: block;
+  height: 100%;
+  min-width: 6px; /* a single vote still reads as a bar, not as nothing */
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--sun-500), var(--sun-300));
+  transition: width 420ms var(--ease);
+}
+
+.tally__count {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  color: var(--text-soft);
+  min-width: 2ch;
+  text-align: right;
+}
+
+/* ------------------------------------------------------- responsive lift
+   From tablet width up the hero gets more room and the panels sit in a
+   two-column grid rather than one long scroll. */
+
+@media (min-width: 768px) {
+  :root {
+    --measure: 40rem;
+  }
+
+  .screen {
+    padding-inline: var(--sp-6);
+  }
+
+  .hero-title {
+    font-size: clamp(4rem, 7vw, 5.5rem);
+  }
+
+  .countdown__value {
+    font-size: clamp(3rem, 5vw, 4rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --measure: 46rem;
+  }
+
+  .home-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-4);
+    align-items: start;
+  }
+
+  .home-grid > .home-grid__full {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Landscape phones: the hero would otherwise push the countdown off-screen. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hero-title {
+    font-size: clamp(2rem, 6vw, 3rem);
+  }
+
+  .hero-date {
+    font-size: 1.25rem;
+  }
+
+  .countdown__value {
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+  }
+
+  .spacer {
+    min-height: 0;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------- history */
+
+.history-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-3);
+}
+
+/* One column on phones, two from tablet, three on a wide desktop. auto-fit
+   with a minmax floor keeps 320px safe without a separate breakpoint. */
+@media (min-width: 700px) {
+  .history-grid {
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  }
+}
+
+.history-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+  transition: transform 160ms var(--ease), border-color 160ms var(--ease);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .history-card {
+    background: rgba(11, 13, 16, 0.9);
+  }
+}
+
+.history-card:hover {
+  border-color: var(--line-strong);
+}
+
+.history-card:active {
+  transform: scale(0.99);
+}
+
+/* The painted sunset stands in when a trip has no cover photo, so a card is
+   never a grey rectangle. */
+.history-card__cover {
+  display: block;
+  height: 110px;
+  background-size: cover;
+  background-position: center 45%;
+  background-image: linear-gradient(180deg, #35323c 0%, #c9542c 55%, #2e5266 100%);
+  flex: none;
+}
+
+.history-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-4);
+  min-width: 0;
+}
+
+.history-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.history-card__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.history-card__date {
+  font-size: 0.9375rem;
+  color: var(--sun-300);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-card__desc {
+  font-size: 0.875rem;
+  color: var(--text-soft);
+  line-height: 1.45;
+  /* Two lines maximum, so cards in a row stay the same height. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.history-card__meta {
+  margin-top: var(--sp-2);
+  font-size: 0.8125rem;
+  color: var(--text-faint);
+}
+
+/* The attendee editor in the organizer dashboard. */
+.attendee-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* ------------------------------------------------------------ share card */
+
+/* Parked off-screen while it is drawn. Not `display: none` — a hidden element
+   has no layout, and a rasteriser can only draw what has been laid out. */
+.share-card-host {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 420px;
+  pointer-events: none;
+  z-index: -100;
+}
+
+.share-card {
+  position: relative;
+  width: 420px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background-color: var(--ink-900);
+  background-size: cover;
+  background-position: center 42%;
+  font-family: var(--font);
+  color: var(--text);
+}
+
+.share-card__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(4, 6, 9, 0.74), rgba(4, 6, 9, 0.34) 30%,
+                    rgba(4, 6, 9, 0.52) 62%, rgba(4, 6, 9, 0.88));
+}
+
+.share-card__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+}
+
+.share-card__title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+}
+
+.share-card__date {
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1.1;
+  color: var(--sun-300);
+}
+
+.share-card__who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: var(--radius);
+  background: rgba(11, 13, 16, 0.82);
+  border: 1px solid var(--line);
+}
+
+.share-slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* A departure and the names that chose it, as one object per row. */
+.share-slot {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: var(--sp-3);
+  align-items: baseline;
+}
+
+.share-slot + .share-slot {
+  border-top: 1px solid var(--line);
+  padding-top: var(--sp-3);
+}
+
+.share-slot__when {
+  display: flex;
+  flex-direction: column;
+}
+
+/* No tabular-nums here, deliberately. The rasteriser lays out each glyph
+   itself and does not honour the OpenType feature, so a tabular "1" comes out
+   padded and "18:00" is drawn as "18 :00". Nothing lines up in columns on this
+   card anyway. */
+.share-slot__time {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.share-slot__time--unknown {
+  color: var(--text-faint);
+}
+
+.share-slot__day {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  line-height: 1.2;
+}
+
+.share-slot__names {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* The people who are not travelling: same two columns, but the left one holds
+   a status rather than a clock, so it is set quieter than a departure. */
+.share-slot--aside .share-slot__names {
+  color: var(--text-soft);
+}
+
+.share-slot__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  line-height: 1.3;
+}
+
+.attendee-row .input {
+  flex: 1;
+  min-width: 0;
+}

@@ -1,0 +1,16 @@
+node_modules/
+dist/
+lib/
+lib-test/
+*.tsbuildinfo
+.env
+.env.local
+*.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+
+# Firebase Auth account data captured during the 2026 account migration.
+# Kept locally as a rollback record; it is not part of the app and has no
+# business in a public repository.
+snapshots/

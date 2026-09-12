@@ -1,0 +1,20 @@
+{
+  "name": "piqeras",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Countdown and departure vote for the Piqeras trip.",
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "test": "node tools/sync-shared.mjs --check && npm --prefix functions test && npm --prefix web test && npm --prefix firebase-rules-tests run test:firestore",
+    "test:domain": "npm --prefix functions test",
+    "test:web": "npm --prefix web test",
+    "test:rules": "npm --prefix firebase-rules-tests run test:firestore",
+    "lint": "npm --prefix functions run lint && npm --prefix web run lint",
+    "sync": "node tools/sync-shared.mjs",
+    "deploy": "npm --prefix web run build && firebase deploy --project piqeras",
+    "deploy:web": "npm --prefix web run build && firebase deploy --only hosting --project piqeras",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage --project piqeras",
+    "deploy:functions": "firebase deploy --only functions --project piqeras"
+  }
+}

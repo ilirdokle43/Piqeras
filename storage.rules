@@ -1,0 +1,50 @@
+rules_version = '2';
+
+// Piqeras — Cloud Storage Security Rules
+//
+// Only trip background images live here.
+//
+// Note the difference from Firestore: Storage rules cannot call get()/exists()
+// against Firestore, so approved membership and the organizer role cannot be
+// read from their server-owned collections here. Instead this file uses the
+// mirrored `organizer` custom claim, which is set only by the Admin SDK and is
+// signed into the ID token — unforgeable from a client, but up to an hour stale
+// after a revocation. For uploading a background photo that is an acceptable
+// window; every Firestore path uses the immediate exists() check instead.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Same identities-based test as Firestore. See the long comment in
+    // firestore.rules: sign_in_provider would break a freshly linked account.
+    function hasGoogle() {
+      return signedIn()
+        && 'google.com' in request.auth.token.firebase.identities;
+    }
+
+    function isOrganizer() {
+      return hasGoogle() && request.auth.token.organizer == true;
+    }
+
+    match /trips/{tripId}/background/{fileName} {
+      // Any signed-in Google account can fetch the image. Membership is not
+      // checked here because a background photo of a beach is not sensitive,
+      // and because the download URL is what an <img> tag actually uses.
+      allow read: if hasGoogle();
+
+      allow write: if isOrganizer()
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+
+      allow delete: if isOrganizer();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,440 @@
+rules_version = '2';
+
+// Piqeras — Firestore Security Rules
+//
+// Threat model, in one line: the display name is a label, never a credential.
+// Every authorization decision is made from request.auth.uid, from the verified
+// Google identity in the token, and from server-owned documents that no client
+// can write. See docs/SECURITY.md.
+//
+// There are three tiers of caller:
+//
+//   hasGoogle()  — signed in with a verified Google account. May claim a
+//                  display name and read their own status. Nothing else.
+//   isMember()   — additionally approved by an organizer. Sees the trip.
+//   isOrganizer() — additionally holds the server-owned organizer record.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+
+    function signedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    /**
+     * A verified Google identity is required for everything.
+     *
+     * This tests `firebase.identities`, NOT `firebase.sign_in_provider`, and the
+     * difference is load-bearing. After linkWithPopup() attaches Google to an
+     * existing session, that session's token keeps reporting
+     * sign_in_provider == 'anonymous' until the user signs out and back in,
+     * while identities immediately gains 'google.com'. Gating on the provider
+     * would lock a user out of their own account the instant they migrated.
+     * Verified against the emulator in firebase-rules-tests/auth-provider.test.mjs.
+     */
+    function hasGoogle() {
+      return signedIn()
+        && 'google.com' in request.auth.token.firebase.identities;
+    }
+
+    function isSelf(uid) {
+      return hasGoogle() && request.auth.uid == uid;
+    }
+
+    /**
+     * Approved group membership. Server-owned: `approvedMembers` is denied to
+     * every client for write, so joining the group is never a client decision.
+     * Deleting the record revokes access on the very next request — which is
+     * what makes organizer-managed removal immediate.
+     */
+    function isMember() {
+      return hasGoogle()
+        && exists(/databases/$(database)/documents/approvedMembers/$(request.auth.uid));
+    }
+
+    /**
+     * Organizer powers require BOTH the organizer record and current
+     * membership, so revoking membership cannot leave a privileged orphan.
+     * `manageMembership` refuses to revoke the membership of a sitting
+     * organizer for exactly this reason — remove the role first.
+     *
+     * The mirrored `organizer` custom claim is deliberately NOT trusted here:
+     * a claim only reaches the client after a token refresh, so a freshly
+     * revoked organizer would keep write access for up to an hour. exists()
+     * costs one document read and is correct immediately, in both directions.
+     */
+    function isOrganizer() {
+      return isMember()
+        && exists(/databases/$(database)/documents/organizers/$(request.auth.uid));
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // A field is present and unchanged between the stored and incoming doc.
+    function unchanged(field) {
+      return field in existing()
+        && field in incoming()
+        && existing()[field] == incoming()[field];
+    }
+
+    function isString(v, minLen, maxLen) {
+      return v is string && v.size() >= minLen && v.size() <= maxLen;
+    }
+
+    // Rejects nulls, non-timestamps, and values outside a sane calendar window.
+    // Guards against clients writing epoch-0 or year-9999 timestamps that would
+    // break every countdown and sort downstream.
+    function saneTimestamp(v) {
+      return v is timestamp
+        && v > timestamp.date(2020, 1, 1)
+        && v < timestamp.date(2100, 1, 1);
+    }
+
+    function optionalSaneTimestamp(v) {
+      return v == null || saneTimestamp(v);
+    }
+
+    // The write is stamped with the server clock, not the device clock. Every
+    // createdAt/updatedAt in this database is trustworthy because of this.
+    function serverStamped(field) {
+      return incoming()[field] == request.time;
+    }
+
+    // ------------------------------------------------------------------ users
+    //
+    // One document per Google account, holding the display name. Deliberately
+    // contains NO email: this document is readable by the whole group, and the
+    // verified email lives in privateProfiles/{uid} instead.
+
+    function validUserDoc() {
+      return incoming().keys().hasAll(['uid', 'displayName', 'displayNameLower', 'createdAt', 'updatedAt'])
+        && incoming().keys().hasOnly([
+             'uid', 'displayName', 'displayNameLower',
+             'createdAt', 'updatedAt', 'locale', 'timeZone', 'platform'
+           ])
+        && incoming().uid == request.auth.uid
+        && isString(incoming().displayName, 2, 24)
+        && incoming().displayName == incoming().displayName.trim()
+        && incoming().displayNameLower == incoming().displayName.lower()
+        && saneTimestamp(incoming().createdAt)
+        && serverStamped('updatedAt')
+        && (!('locale' in incoming()) || incoming().locale in ['sq', 'en', 'el', 'ro', 'it'])
+        && (!('timeZone' in incoming()) || isString(incoming().timeZone, 1, 64))
+        && (!('platform' in incoming()) || incoming().platform in ['android', 'web']);
+    }
+
+    match /users/{uid} {
+      // get and list are split throughout this file. A `list` is allowed only
+      // when the query's own constraints prove the rule holds, so any condition
+      // that depends on the document or on the path wildcard must be kept off
+      // the list path. See docs/SECURITY.md.
+      //
+      // A pending user may read their own profile — they need to see the name
+      // they chose while they wait — but may not enumerate the group.
+      allow get: if isSelf(uid) || isMember();
+      allow list: if isMember();
+
+      // Choosing a display name is allowed before approval, so the organizer
+      // sees a real name to approve rather than an opaque account.
+      allow create: if isSelf(uid)
+        && validUserDoc()
+        && serverStamped('createdAt');
+
+      allow update: if isSelf(uid)
+        && validUserDoc()
+        && unchanged('uid')
+        && unchanged('createdAt');
+
+      // Removal is a privileged backend operation (manageMembership), never a
+      // client delete.
+      allow delete: if false;
+
+      // ------------------------------------------------------- push tokens
+      // Private to the owner. The notification fan-out reads them with the
+      // Admin SDK via a collection-group query, which bypasses these rules.
+      match /tokens/{tokenId} {
+        allow read, delete: if isSelf(uid);
+        allow create, update: if isSelf(uid)
+          && incoming().keys().hasOnly(['token', 'platform', 'locale', 'createdAt', 'lastSeenAt'])
+          && incoming().token == tokenId
+          && incoming().platform in ['android', 'web']
+          && saneTimestamp(incoming().createdAt)
+          && serverStamped('lastSeenAt');
+      }
+    }
+
+    // --------------------------------------------------------- privateProfiles
+    //
+    // The verified Google email, readable ONLY by its owner — not by other
+    // members, and not by organizers. The organizer approval screen shows a
+    // masked address derived server-side instead.
+
+    match /privateProfiles/{uid} {
+      allow get: if isSelf(uid);
+      allow list: if false;
+
+      allow create, update: if isSelf(uid)
+        && incoming().keys().hasOnly(['uid', 'email', 'updatedAt'])
+        && incoming().uid == uid
+        // The email must match the one Google verified in the ID token, so a
+        // client cannot store an address it does not own.
+        && incoming().email == request.auth.token.email
+        && request.auth.token.email_verified == true
+        && serverStamped('updatedAt');
+
+      allow delete: if false;
+    }
+
+    // ----------------------------------------------------------- displayNames
+    //
+    // Case-insensitive uniqueness, enforced structurally: the lowercased name
+    // IS the document id, and `create` fails if the document already exists.
+    // Renaming is an atomic batch — create the new claim, delete the old one,
+    // update users/{uid} — so a collision can never leave a half-applied name.
+
+    match /displayNames/{nameLower} {
+      allow get: if hasGoogle();
+      allow list: if isMember();
+
+      // Available before approval, so a pending user can pick their name.
+      allow create: if hasGoogle()
+        && incoming().keys().hasOnly(['uid', 'claimedAt'])
+        && incoming().uid == request.auth.uid
+        && serverStamped('claimedAt')
+        && nameLower.size() >= 2 && nameLower.size() <= 24
+        && nameLower == nameLower.lower();
+
+      // Claims are immutable; you release one by deleting it.
+      allow update: if false;
+
+      allow delete: if hasGoogle() && existing().uid == request.auth.uid;
+    }
+
+    // ------------------------------------------------------ approved members
+    //
+    // Server-owned. Written only by the `manageMembership` callable or
+    // tools/seed-membership.mjs, both using the Admin SDK. No client can join
+    // the group, and no client can keep itself in it.
+
+    match /approvedMembers/{uid} {
+      // Self-read is what lets a pending user discover they were approved,
+      // in realtime, without being able to see anything else.
+      allow get: if isSelf(uid) || isMember();
+      allow list: if isMember();
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------- pending members
+    //
+    // Created by the `requestAccess` callable from server-verified token data,
+    // so the Google name and masked email on it cannot be spoofed.
+
+    match /pendingMembers/{uid} {
+      allow get: if isSelf(uid) || isOrganizer();
+      allow list: if isOrganizer();
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------- organizers
+
+    match /organizers/{uid} {
+      allow get: if isSelf(uid) || isMember();
+      allow list: if isMember();
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------------ trips
+
+    function validTripDoc() {
+      return incoming().keys().hasAll([
+               'title', 'destination', 'status', 'proposedDeparture',
+               'votingLocked', 'isCurrent', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'
+             ])
+        && incoming().keys().hasOnly([
+               'title', 'destination', 'description', 'status',
+               'proposedDeparture', 'finalDeparture', 'votingDeadline',
+               'votingLocked', 'isCurrent', 'visible',
+               'datePrecision', 'returnDate', 'memory',
+               'backgroundImagePath', 'backgroundImageUrl', 'backgroundCredit',
+               'createdAt', 'createdBy', 'updatedAt', 'updatedBy',
+               'responseCounts', 'respondedCount', 'attendeeCount'
+             ])
+        && isString(incoming().title, 1, 60)
+        && isString(incoming().destination, 1, 60)
+        && (!('description' in incoming()) || incoming().description == null || isString(incoming().description, 0, 500))
+        && incoming().status in ['draft', 'voting', 'confirmed', 'completed', 'cancelled', 'archived']
+        && saneTimestamp(incoming().proposedDeparture)
+        && (!('finalDeparture' in incoming()) || optionalSaneTimestamp(incoming().finalDeparture))
+        && (!('votingDeadline' in incoming()) || optionalSaneTimestamp(incoming().votingDeadline))
+        && incoming().votingLocked is bool
+        && incoming().isCurrent is bool
+        && (!('backgroundImagePath' in incoming()) || incoming().backgroundImagePath == null || isString(incoming().backgroundImagePath, 1, 300))
+        && (!('backgroundImageUrl' in incoming()) || incoming().backgroundImageUrl == null || isString(incoming().backgroundImageUrl, 1, 2000))
+        && (!('backgroundCredit' in incoming()) || incoming().backgroundCredit == null || isString(incoming().backgroundCredit, 0, 120))
+        // A trip cannot be marked confirmed without an official departure.
+        && (incoming().status != 'confirmed'
+            || ('finalDeparture' in incoming() && saneTimestamp(incoming().finalDeparture)))
+        // A draft is the organizer's scratch space and must never be the
+        // current trip.
+        && !(incoming().status == 'draft' && incoming().isCurrent == true)
+        // THE VISIBILITY INVARIANT: visible == (status != 'draft').
+        //
+        // `visible` is what the member read rule tests, so letting a client
+        // choose it freely would let anyone publish a draft — or hide a live
+        // trip from the group. It is therefore not a free field: it must equal
+        // the derivation, on every single write. A cancelled trip stays
+        // visible; it is excluded from Historiku by the history query, never by
+        // visibility.
+        && 'visible' in incoming()
+        && incoming().visible == (incoming().status != 'draft')
+        // Date precision is required so a date-only trip can never render an
+        // invented time.
+        && 'datePrecision' in incoming()
+        && incoming().datePrecision in ['dateOnly', 'dateTime']
+        && (!('returnDate' in incoming()) || optionalSaneTimestamp(incoming().returnDate))
+        && (!('memory' in incoming()) || incoming().memory == null || isString(incoming().memory, 0, 1000))
+        && serverStamped('updatedAt')
+        && incoming().updatedBy == request.auth.uid;
+    }
+
+    match /trips/{tripId} {
+      // Approved members read every visible trip — the current one and the
+      // history. Organizers additionally read drafts. Pending users read
+      // nothing: no title, no dates, no countdown.
+      //
+      // `list` previously read `isMember()` alone. Because that branch never
+      // inspects the document, an unfiltered getDocs(collection('trips'))
+      // returned EVERYTHING, drafts included — verified against the emulator on
+      // 2026-08-26. Testing `visible` on both get and list closes it.
+      //
+      // The shape is dictated by how Firestore evaluates `list`: rules are not
+      // filters, so a listing is allowed only when the query's own constraints
+      // prove the rule holds. Every client query therefore carries
+      // `where('visible','==',true)`, which matches this equality exactly. The
+      // organizer branch is first and reads no document data, so an organizer's
+      // unfiltered query stays provable.
+      allow get: if isMember() && (isOrganizer() || existing().visible == true);
+      allow list: if isMember() && (isOrganizer() || existing().visible == true);
+
+      allow create: if isOrganizer()
+        && validTripDoc()
+        && serverStamped('createdAt')
+        && incoming().createdBy == request.auth.uid
+        // Counters start empty and are owned by the Cloud Functions afterwards.
+        && (!('responseCounts' in incoming()) || incoming().responseCounts == { 'yes': 0, 'maybe': 0, 'no': 0 })
+        && (!('respondedCount' in incoming()) || incoming().respondedCount == 0)
+        && (!('attendeeCount' in incoming()) || incoming().attendeeCount == 0);
+
+      allow update: if isOrganizer()
+        && validTripDoc()
+        && unchanged('createdAt')
+        && unchanged('createdBy')
+        // The response tallies and the attendee count are maintained
+        // server-side only. A client that tries to hand-edit them is rejected
+        // outright — otherwise a history card could claim any turnout it liked.
+        && (!('responseCounts' in incoming()) || unchanged('responseCounts'))
+        && (!('respondedCount' in incoming()) || unchanged('respondedCount'))
+        && (!('attendeeCount' in incoming()) || unchanged('attendeeCount'));
+
+      // History is not destroyed from the client; trips are cancelled or
+      // archived instead, which keeps every past response intact.
+      allow delete: if false;
+
+      // -------------------------------------------------------- responses
+      //
+      // Document id IS the member uid. That is what structurally guarantees
+      // "one current response per member per trip" — an edit overwrites, it
+      // cannot fork into a duplicate, no matter what the client sends.
+
+      function trip() {
+        return get(/databases/$(database)/documents/trips/$(tripId)).data;
+      }
+
+      function votingOpen() {
+        let t = trip();
+        return t.votingLocked == false
+          && t.status in ['voting', 'confirmed']
+          && (!('votingDeadline' in t) || t.votingDeadline == null || request.time < t.votingDeadline);
+      }
+
+      function validResponseDoc(uid) {
+        return incoming().keys().hasAll(['uid', 'displayName', 'attendance', 'createdAt', 'updatedAt'])
+          && incoming().keys().hasOnly([
+               'uid', 'displayName', 'attendance', 'preferredDeparture',
+               'note', 'createdAt', 'updatedAt'
+             ])
+          && incoming().uid == uid
+          && isString(incoming().displayName, 2, 24)
+          && incoming().attendance in ['yes', 'maybe', 'no']
+          // A preferred departure is required from anyone who might come, and
+          // must be absent for anyone who is not coming.
+          && (incoming().attendance == 'no'
+                ? (!('preferredDeparture' in incoming()) || incoming().preferredDeparture == null)
+                : ('preferredDeparture' in incoming() && saneTimestamp(incoming().preferredDeparture)))
+          && (!('note' in incoming()) || incoming().note == null || isString(incoming().note, 0, 140))
+          && saneTimestamp(incoming().createdAt)
+          && serverStamped('updatedAt');
+      }
+
+      match /responses/{uid} {
+        // Seeing who is coming, and when they want to leave, is the point of
+        // the app — every approved member reads every response. Pending users
+        // read none of them.
+        allow get, list: if isMember();
+
+        allow create: if isSelf(uid)
+          && isMember()
+          && votingOpen()
+          && validResponseDoc(uid)
+          && serverStamped('createdAt');
+
+        allow update: if isSelf(uid)
+          && isMember()
+          && votingOpen()
+          && validResponseDoc(uid)
+          && unchanged('uid')
+          && unchanged('createdAt');
+
+        // Members may withdraw their own response; organizers may remove an
+        // invalid or duplicate one at any time, including after locking.
+        allow delete: if (isSelf(uid) && isMember() && votingOpen()) || isOrganizer();
+      }
+
+      // ------------------------------------------------- attendee snapshots
+      //
+      // Immutable records of who was actually on a past trip.
+      //
+      // Server-owned: written only by the `completeTrip` and
+      // `saveHistoricalTrip` callables. That is what makes them immutable in
+      // the sense that matters — renaming yourself, leaving the group, or an
+      // organizer editing the live roster cannot rewrite who went to Piqeras in
+      // 2026. It also means a historical friend needs no Firebase account:
+      // a snapshot carries a name, and a uid only when one genuinely exists.
+      //
+      // Deliberately NO email field. History is readable by the whole group,
+      // and an address must never be group-readable.
+      match /attendees/{attendeeId} {
+        allow get, list: if isMember();
+        allow write: if false;
+      }
+    }
+
+    // --------------------------------------------------- notification ledger
+    //
+    // Write-once idempotency records owned by the notification functions.
+    // Opaque to clients: nothing in the UI needs them, and exposing them would
+    // leak delivery metadata about other member devices.
+
+    match /notificationEvents/{eventKey} {
+      allow read, write: if false;
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
